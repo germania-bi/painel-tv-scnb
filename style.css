@@ -12,13 +12,16 @@
 }
 *{box-sizing:border-box;}
 html,body{
-  margin:0; padding:0; width:100vw; height:100vh; overflow:hidden;
+  margin:0; padding:0; width:100vw; height:100vh; height:100dvh; overflow:hidden;
   background:var(--bg); color:var(--txt);
   font-family:'Barlow',sans-serif;
 }
 ::selection{background:var(--gold);color:#1A1208;}
 
-.tv-wrap{ width:100vw; height:100vh; display:flex; flex-direction:column; }
+/* dvh acompanha a altura REAL disponível (descontando barra de endereço/abas do
+   navegador) — em vh puro, se o navegador não reserva esse espaço no cálculo,
+   o rodapé/última linha do conteúdo pode ficar cortado fora da tela visível. */
+.tv-wrap{ width:100vw; height:100vh; height:100dvh; display:flex; flex-direction:column; }
 
 /* ── HEADER ── */
 .header{
