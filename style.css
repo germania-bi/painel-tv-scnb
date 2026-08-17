@@ -142,9 +142,13 @@ html,body{
 .meta-track{ position:absolute; left:0; bottom:0; height:6px; width:100%; background:rgba(0,0,0,0.25); }
 .meta-fill{ height:100%; background:var(--gold-lt); transition:width 1s ease; }
 
-/* ── FUNIL SCREEN ── */
-.funil-layout{ flex:1; display:grid; grid-template-columns:1.25fr 1fr; gap:24px; min-height:0; }
-.funil-side{ display:flex; flex-direction:column; min-height:0; }
+/* ── FUNIL SCREEN — empilhado (funil em cima, lista embaixo), não lado a lado:
+   lado a lado deixava as duas colunas esticadas na altura toda da tela com
+   pouco conteúdo em cada uma, parecendo vazias. Empilhado usa a largura
+   inteira pra cada bloco (barras bem mais largas/expostas) e cada um só
+   ocupa a altura que precisa. ── */
+.funil-layout{ flex:1; display:flex; flex-direction:column; gap:22px; min-height:0; }
+.funil-side{ flex:0 0 auto; }
 .funil-title-row{ display:flex; align-items:baseline; gap:14px; margin-bottom:18px; flex-shrink:0; }
 .funil-sub{
   font-family:'Barlow Condensed',sans-serif; font-size:14px; font-weight:600;
@@ -152,22 +156,23 @@ html,body{
   background:rgba(255,166,44,0.08); border:1px solid var(--border2);
   border-radius:5px; padding:3px 12px;
 }
-.funil-col{ flex:1; display:flex; flex-direction:column; justify-content:center; gap:20px; }
-.funil-row{ display:flex; align-items:center; gap:16px; }
+.funil-col{ display:flex; flex-direction:column; gap:16px; }
+.funil-row{ display:flex; align-items:center; gap:20px; }
 .funil-count{
   font-family:'Barlow Condensed',sans-serif; font-weight:900; font-size:34px;
   color:var(--txt); width:86px; text-align:right; flex-shrink:0;
 }
 .funil-label{
   font-family:'Barlow Condensed',sans-serif; font-weight:800; font-size:18px;
-  letter-spacing:1px; text-transform:uppercase; width:190px; flex-shrink:0;
+  letter-spacing:1px; text-transform:uppercase; width:210px; flex-shrink:0;
   text-align:left;
 }
 /* Track de largura fixa (não flex:1) — senão barras pequenas deixam um vão enorme
-   até a % lá na outra ponta da tela, parecendo "vazio" */
-.funil-bar-track{ width:clamp(120px,26vw,340px); flex-shrink:0; display:flex; background:rgba(255,255,255,0.04); border-radius:8px; overflow:hidden; }
+   até a % lá na outra ponta da tela, parecendo "vazio". Agora com a tela inteira de
+   largura disponível (não mais dividindo com a lista ao lado), pode ser bem maior. */
+.funil-bar-track{ width:clamp(300px,62vw,1200px); flex-shrink:0; display:flex; background:rgba(255,255,255,0.04); border-radius:8px; overflow:hidden; }
 .funil-bar{
-  height:34px; border-radius:8px;
+  height:38px; border-radius:8px;
   box-shadow:var(--shadow-sm); min-width:6px;
   transition:width .5s ease;
 }
@@ -178,7 +183,7 @@ html,body{
 .funil-pct-lbl{ display:block; font-size:10px; font-weight:600; letter-spacing:0.5px; color:var(--txt-faint); text-transform:uppercase; }
 
 .panel{
-  background:var(--card); border:1px solid var(--border); border-radius:var(--radius);
+  flex:1; background:var(--card); border:1px solid var(--border); border-radius:var(--radius);
   box-shadow:var(--shadow-sm); padding:22px 26px; display:flex; flex-direction:column; min-height:0;
 }
 .panel-title{
