@@ -170,7 +170,9 @@ html,body{
    inteira pra cada bloco (barras bem mais largas/expostas) e cada um só
    ocupa a altura que precisa. ── */
 .funil-layout{ flex:1; display:flex; flex-direction:column; gap:22px; min-height:0; }
-.funil-side{ flex:0 0 auto; }
+/* Proporção deliberada (não "encolhe pro conteúdo") — senão o funil (5 linhas
+   fixas) fica espremido no topo enquanto o painel de baixo vira um vazio enorme */
+.funil-side{ flex:1.2; display:flex; flex-direction:column; min-height:0; }
 .funil-title-row{ display:flex; align-items:baseline; gap:14px; margin-bottom:18px; flex-shrink:0; }
 .funil-sub{
   font-family:'Barlow Condensed',sans-serif; font-size:14px; font-weight:600;
@@ -178,14 +180,14 @@ html,body{
   background:rgba(255,166,44,0.08); border:1px solid var(--border2);
   border-radius:5px; padding:3px 12px;
 }
-.funil-col{ display:flex; flex-direction:column; gap:16px; }
+.funil-col{ flex:1; display:flex; flex-direction:column; justify-content:center; gap:22px; }
 .funil-row{ display:flex; align-items:center; gap:20px; }
 .funil-count{
-  font-family:'Barlow Condensed',sans-serif; font-weight:900; font-size:34px;
-  color:var(--txt); width:70px; text-align:left; flex-shrink:0;
+  font-family:'Barlow Condensed',sans-serif; font-weight:900; font-size:38px;
+  color:var(--txt); width:74px; text-align:left; flex-shrink:0;
 }
 .funil-label{
-  font-family:'Barlow Condensed',sans-serif; font-weight:800; font-size:18px;
+  font-family:'Barlow Condensed',sans-serif; font-weight:800; font-size:19px;
   letter-spacing:1px; text-transform:uppercase; width:210px; flex-shrink:0;
   text-align:left;
 }
@@ -194,9 +196,9 @@ html,body{
    praticamente invisíveis dentro de um container vazio enorme. Largura fixa alinhada
    ao mesmo padrão de margem da linha de cards da Tela 1. */
 .funil-bar-track{ width:clamp(300px,58vw,1100px); flex-shrink:0; display:flex; }
-.funil-bar{ width:100%; height:38px; border-radius:8px; box-shadow:var(--shadow-sm); }
+.funil-bar{ width:100%; height:50px; border-radius:8px; box-shadow:var(--shadow-sm); }
 .funil-pct{
-  font-family:'Barlow Condensed',sans-serif; font-weight:800; font-size:22px;
+  font-family:'Barlow Condensed',sans-serif; font-weight:800; font-size:24px;
   color:var(--txt-mid); text-align:left; line-height:1.15;
 }
 .funil-pct-lbl{ display:block; font-size:10px; font-weight:600; letter-spacing:0.5px; color:var(--txt-faint); text-transform:uppercase; }
