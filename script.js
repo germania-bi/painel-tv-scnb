@@ -203,11 +203,18 @@ const ETAPAS_TARDIAS=new Set(['Assinatura de Contrato','Processamento de Pagamen
 // PERIODO — semana (seg-dom) e mes corrente, sem picker (kiosk nao interage)
 // ═══════════════════════════════════════════════════════
 const MESES=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+// Semana = quarto do mês (S1-S4), mesma convenção já usada no Dashboard SCNB (dia<=9→S1,
+// <=16→S2, <=23→S3, resto→S4) — não é semana ISO. "Semana anterior" pode cruzar pro mês
+// passado (S1 de agosto → S4 de julho), computado recalculando a partir de 1 dia antes.
 function weekRange(ref){
-  const day=(ref.getDay()+6)%7;
-  const mon=new Date(ref.getFullYear(),ref.getMonth(),ref.getDate()-day);
-  const sun=new Date(mon.getFullYear(),mon.getMonth(),mon.getDate()+6,23,59,59,999);
-  return {from:mon,to:sun};
+  const y=ref.getFullYear(),m=ref.getMonth(),d=ref.getDate();
+  const ultimoDia=new Date(y,m+1,0).getDate();
+  let sNum,from,to;
+  if(d<=9){ sNum=1; from=new Date(y,m,1); to=new Date(y,m,9,23,59,59,999); }
+  else if(d<=16){ sNum=2; from=new Date(y,m,10); to=new Date(y,m,16,23,59,59,999); }
+  else if(d<=23){ sNum=3; from=new Date(y,m,17); to=new Date(y,m,23,23,59,59,999); }
+  else{ sNum=4; from=new Date(y,m,24); to=new Date(y,m,ultimoDia,23,59,59,999); }
+  return {from,to,sNum};
 }
 function monthRange(ref){
   const from=new Date(ref.getFullYear(),ref.getMonth(),1);
@@ -218,9 +225,9 @@ function getPeriod(type){
   const now=new Date();
   if(type==='semana'){
     const cur=weekRange(now);
-    const prev=weekRange(new Date(+cur.from-1*864e5));
+    const prev=weekRange(new Date(cur.from.getTime()-1*864e5));
     const d1=String(cur.from.getDate()).padStart(2,'0'),d2=String(cur.to.getDate()).padStart(2,'0');
-    const label='SEMANA ('+d1+' – '+d2+' '+MESES[cur.from.getMonth()].slice(0,3).toUpperCase()+')';
+    const label='SEMANA '+cur.sNum+' ('+d1+'–'+d2+' '+MESES[cur.from.getMonth()].slice(0,3).toUpperCase()+')';
     return {cur,prev,label,dlabel:'vs semana anterior'};
   }
   const cur=monthRange(now);
@@ -406,20 +413,22 @@ function renderResumo(period){
 const FUNIL_COLORS=['#FFA62C','#E8941A','#C8941A','#B87A1A','#1E7A42'];
 function renderFunil(period){
   const {steps,podeVirar,janelaDias}=computeFunil(period);
-  const maxN=steps[0].n||1;
 
   const funilSub=document.getElementById('f-funil-sub');
   if(funilSub) funilSub.textContent='pipeline · últimos '+janelaDias+' dias';
 
   const col=document.getElementById('f-funil-col');
   if(col){
+    // Barra sempre "cheia" (mesma largura em todas as etapas) — a contagem e a %
+    // de conversão já carregam a magnitude; uma barra proporcional ao topo do funil
+    // (288 vs 1) deixava as etapas finais praticamente invisíveis dentro de um
+    // container vazio enorme.
     col.innerHTML=steps.map((s,i)=>{
-      const wPct=Math.max(Math.round(s.n/maxN*100),s.n>0?4:2);
       const pctTxt=i===0?'—':s.pct+'%';
       return `<div class="funil-row">
         <div class="funil-count">${s.n}</div>
         <div class="funil-label" style="color:${FUNIL_COLORS[i]}">${s.label}</div>
-        <div class="funil-bar-track"><div class="funil-bar" style="width:${wPct}%;background:${FUNIL_COLORS[i]}"></div></div>
+        <div class="funil-bar-track"><div class="funil-bar" style="background:${FUNIL_COLORS[i]}"></div></div>
         <div class="funil-pct">${pctTxt}<span class="funil-pct-lbl">${i===0?'':'da etapa ant.'}</span></div>
       </div>`;
     }).join('');
@@ -434,12 +443,12 @@ function renderFunil(period){
       body.innerHTML='<div class="pv-empty">Nenhuma negociação em etapa avançada</div>';
     }else{
       body.innerHTML=podeVirar.map(r=>{
-        const cls=r.dias>14?'style="color:var(--s-red)"':r.dias>7?'style="color:var(--s-yellow)"':'';
+        const urgCls=r.dias>14?'urg-red':r.dias>7?'urg-yellow':'';
         const dd=String(r.data.getDate()).padStart(2,'0'),mm=String(r.data.getMonth()+1).padStart(2,'0');
-        return `<div class="pv-row" ${cls}>
-          <span class="pv-entrou">${dd}/${mm}</span>
-          <span>${r.nome}</span>
-          <span class="pv-etapa">${r.etapa}</span>
+        return `<div class="pv-card ${urgCls}">
+          <div class="pv-card-nome">${r.nome}</div>
+          <div class="pv-card-etapa">${r.etapa}</div>
+          <div class="pv-card-meta"><span>entrou ${dd}/${mm}</span><span class="pv-card-dias">há ${r.dias}d</span></div>
         </div>`;
       }).join('');
     }
@@ -465,7 +474,16 @@ function applyState(){
   document.getElementById('screen-'+s.screen)?.classList.add('active');
 
   const pill=document.getElementById('h-period-pill');
-  if(pill) pill.textContent=period.label;
+  if(pill){
+    pill.textContent=period.label;
+    pill.classList.remove('tipo-semana','tipo-mes');
+    pill.classList.add(s.type==='semana'?'tipo-semana':'tipo-mes');
+    // reinicia a animação removendo e reforçando reflow, senão reaplicar a
+    // mesma classe não reinicia o keyframe
+    pill.classList.remove('pulse');
+    void pill.offsetWidth;
+    pill.classList.add('pulse');
+  }
 
   document.querySelectorAll('#progress-dots span').forEach((el,i)=>el.classList.toggle('active',i===stateIdx));
 
