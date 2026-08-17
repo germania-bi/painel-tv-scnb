@@ -443,8 +443,10 @@ function renderResumo(period){
   if(metaFill) metaFill.style.width=Math.min(c.meta.pct,100)+'%';
 }
 
-// Gradiente do topo (alto volume) ao fundo (etapa vencida) do funil
-const FUNIL_COLORS=['#FFA62C','#E8941A','#C8941A','#B87A1A','#1E7A42'];
+// Uma jornada só (cinza neutro → dourado → verde), não 5 cores soltas: Lead é
+// neutro (ainda não é "quente"), esquenta em dourado nas etapas de negociação,
+// fecha em verde na Venda.
+const FUNIL_COLORS=['#8B8580','#A68B54','#C8941A','#6B9955','#34D399'];
 function renderFunil(period){
   const {steps,podeVirar,janelaDias}=computeFunil(period);
 
@@ -528,6 +530,13 @@ function applyState(){
   }
 
   document.querySelectorAll('#progress-dots span').forEach((el,i)=>el.classList.toggle('active',i===stateIdx));
+
+  const timer=document.getElementById('accent-timer');
+  if(timer){
+    timer.classList.remove('counting');
+    void timer.offsetWidth; // reinicia a animação (reaplicar a mesma classe não reinicia o keyframe)
+    timer.classList.add('counting');
+  }
 
   if(s.screen==='resumo') renderResumo(period);
   else renderFunil(period);

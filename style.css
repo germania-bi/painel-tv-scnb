@@ -92,11 +92,15 @@ html,body{
   color:rgba(255,255,255,0.40); letter-spacing:1px;
 }
 
-/* accent bar */
-.accent-bar{
-  height:4px; flex-shrink:0;
+/* accent bar — dobra de cronômetro: esvazia da esquerda pra direita ao longo
+   dos 15s de cada estado, reiniciando a cada troca (JS re-dispara a animação) */
+.accent-bar{ height:4px; flex-shrink:0; position:relative; background:rgba(255,166,44,0.12); overflow:hidden; }
+.accent-bar-fill{
+  position:absolute; inset:0; transform-origin:right; transform:scaleX(1);
   background:linear-gradient(90deg,#9E2015 0%,var(--gold) 25%,var(--gold-lt) 50%,var(--gold) 75%,#9E2015 100%);
 }
+.accent-bar-fill.counting{ animation:accentCountdown 15s linear forwards; }
+@keyframes accentCountdown{ from{ transform:scaleX(1); } to{ transform:scaleX(0); } }
 
 /* ── MAIN STAGE ── */
 .stage{ position:relative; flex:1; min-height:0; }
