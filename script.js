@@ -518,8 +518,9 @@ function applyState(){
   document.getElementById('screen-'+s.screen)?.classList.add('active');
 
   const pill=document.getElementById('h-period-pill');
-  if(pill){
-    pill.textContent=period.label;
+  const pillLabel=document.getElementById('h-period-label');
+  if(pill&&pillLabel){
+    pillLabel.textContent=period.label;
     pill.classList.remove('tipo-semana','tipo-mes');
     pill.classList.add(s.type==='semana'?'tipo-semana':'tipo-mes');
     // reinicia a animação removendo e reforçando reflow, senão reaplicar a
@@ -531,7 +532,8 @@ function applyState(){
 
   document.querySelectorAll('#progress-dots span').forEach((el,i)=>el.classList.toggle('active',i===stateIdx));
 
-  const timer=document.getElementById('accent-timer');
+  // Cronômetro colado na borda inferior do próprio pill (não mais na linha do header)
+  const timer=document.getElementById('period-timer');
   if(timer){
     timer.classList.remove('counting');
     void timer.offsetWidth; // reinicia a animação (reaplicar a mesma classe não reinicia o keyframe)

@@ -71,6 +71,7 @@ html,body{
 }
 .h-period{ margin-left:auto; display:flex; align-items:center; gap:14px; }
 .h-period-pill{
+  position:relative;
   background:rgba(0,0,0,0.28); border:2px solid rgba(255,255,255,0.14);
   border-radius:8px; padding:10px 26px;
   font-family:'Barlow Condensed',sans-serif; font-size:22px; font-weight:800;
@@ -87,20 +88,24 @@ html,body{
   30%{ transform:scale(1.14); box-shadow:0 0 0 10px rgba(255,166,44,0); }
   100%{ transform:scale(1); box-shadow:0 0 0 0 rgba(255,166,44,0); }
 }
+/* Cronômetro colado por dentro da borda inferior do próprio pill — esvazia da
+   esquerda pra direita ao longo dos 15s de cada estado, reinicia a cada troca */
+.h-period-timer{
+  position:absolute; left:2px; right:2px; bottom:2px; height:3px; border-radius:0 0 5px 5px;
+  background:currentColor; opacity:.75; transform-origin:right; transform:scaleX(1);
+}
+.h-period-timer.counting{ animation:periodCountdown 15s linear forwards; }
+@keyframes periodCountdown{ from{ transform:scaleX(1); } to{ transform:scaleX(0); } }
 .h-clock{
   font-family:'Barlow Condensed',sans-serif; font-size:15px; font-weight:600;
   color:rgba(255,255,255,0.40); letter-spacing:1px;
 }
 
-/* accent bar — dobra de cronômetro: esvazia da esquerda pra direita ao longo
-   dos 15s de cada estado, reiniciando a cada troca (JS re-dispara a animação) */
-.accent-bar{ height:4px; flex-shrink:0; position:relative; background:rgba(255,166,44,0.12); overflow:hidden; }
-.accent-bar-fill{
-  position:absolute; inset:0; transform-origin:right; transform:scaleX(1);
+/* accent bar */
+.accent-bar{
+  height:4px; flex-shrink:0;
   background:linear-gradient(90deg,#9E2015 0%,var(--gold) 25%,var(--gold-lt) 50%,var(--gold) 75%,#9E2015 100%);
 }
-.accent-bar-fill.counting{ animation:accentCountdown 15s linear forwards; }
-@keyframes accentCountdown{ from{ transform:scaleX(1); } to{ transform:scaleX(0); } }
 
 /* ── MAIN STAGE ── */
 .stage{ position:relative; flex:1; min-height:0; }
