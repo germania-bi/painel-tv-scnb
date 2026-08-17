@@ -18,6 +18,25 @@ html,body{
 }
 ::selection{background:var(--gold);color:#1A1208;}
 
+/* ── OVERLAY TELA CHEIA — some no primeiro toque/clique ── */
+.fs-overlay{
+  position:fixed; inset:0; z-index:999;
+  background:rgba(10,7,4,0.94);
+  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:18px;
+  cursor:pointer;
+}
+.fs-overlay.hidden{ display:none; }
+.fs-overlay-icon{ font-size:96px; color:var(--gold-lt); line-height:1; }
+.fs-overlay-txt{
+  font-family:'Barlow Condensed',sans-serif; font-size:38px; font-weight:800;
+  letter-spacing:1.5px; text-transform:uppercase; color:var(--txt);
+}
+.fs-overlay-skip{
+  font-family:'Barlow Condensed',sans-serif; font-size:16px; font-weight:600;
+  letter-spacing:1px; text-transform:uppercase; color:var(--txt-faint);
+  text-decoration:underline; margin-top:20px;
+}
+
 /* dvh acompanha a altura REAL disponível (descontando barra de endereço/abas do
    navegador) — em vh puro, se o navegador não reserva esse espaço no cálculo,
    o rodapé/última linha do conteúdo pode ficar cortado fora da tela visível. */

@@ -8,7 +8,6 @@ const URLS = {
 };
 const REFRESH_MS = 10*60*1000;      // recarrega os dados a cada 10 min
 const STATE_MS = 15*1000;           // cada tela+periodo fica 15s no ar
-const RELOAD_MS = 6*60*60*1000;     // reload completo da pagina a cada 6h (resiliencia de kiosk 24/7)
 const META_VENDAS_MES = 20;         // meta fixa: 20 vendas (Germânia + Loja) por mês
 const META_VENDAS_SEMANA = Math.round(META_VENDAS_MES/4); // proporcional, arredondado
 
@@ -489,12 +488,24 @@ function tickClock(){
 }
 
 // ═══════════════════════════════════════════════════════
-// TELA CHEIA — botão no rodapé + tecla F (Fullscreen API exige gesto do usuário,
-// por isso não dá pra entrar sozinho ao carregar a página)
+// TELA CHEIA — overlay de boas-vindas + botão no rodapé + tecla F
+// (Fullscreen API exige gesto do usuário, não dá pra entrar sozinho ao carregar)
 // ═══════════════════════════════════════════════════════
+function hideFsOverlay(){
+  document.getElementById('fs-overlay')?.classList.add('hidden');
+}
 function toggleFullscreen(){
-  if(!document.fullscreenElement) document.documentElement.requestFullscreen?.().catch(()=>{});
-  else document.exitFullscreen?.();
+  if(!document.fullscreenElement){
+    document.documentElement.requestFullscreen?.()
+      .then(hideFsOverlay)
+      .catch(hideFsOverlay); // se a API falhar aqui, não trava o usuário atrás do overlay
+  }else{
+    document.exitFullscreen?.();
+  }
+}
+function dismissFsOverlay(ev){
+  ev.stopPropagation();
+  hideFsOverlay();
 }
 document.addEventListener('keydown',e=>{
   if(e.key==='f'||e.key==='F') toggleFullscreen();
@@ -502,6 +513,7 @@ document.addEventListener('keydown',e=>{
 document.addEventListener('fullscreenchange',()=>{
   const btn=document.getElementById('fs-btn');
   if(btn) btn.textContent=document.fullscreenElement?'⛶ Sair da Tela Cheia':'⛶ Tela Cheia';
+  if(document.fullscreenElement) hideFsOverlay();
 });
 
 // ═══════════════════════════════════════════════════════
@@ -514,5 +526,7 @@ document.addEventListener('fullscreenchange',()=>{
   setInterval(tick, STATE_MS);
   setInterval(tickClock, 1000);
   setInterval(async ()=>{ await fetchAll(); }, REFRESH_MS);
-  setTimeout(()=>location.reload(), RELOAD_MS);
+  // Sem reload periódico de página: recarregar navegaria fora do modo tela cheia e a
+  // Fullscreen API exige um clique novo do usuário pra reativar — ninguém vai estar lá
+  // pra clicar de novo numa TV. Os dados já se atualizam sozinhos via fetchAll acima.
 })();
