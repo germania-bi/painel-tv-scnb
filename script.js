@@ -316,14 +316,14 @@ function computeResumo(period){
 // Ciclo de venda de chopeira dura semanas — um funil restrito estritamente ao período
 // (semana/mês) zeraria nas etapas finais quase sempre (nenhum lead recém-criado ainda
 // chegou lá) e comparar populações diferentes por etapa quebra o formato (etapa 2 > etapa 1).
-// Por isso todas as 5 etapas usam a MESMA janela fixa (90 dias), garantindo um funil sempre
-// coerente e decrescente. O que muda entre semana/mês é a lista "Pode Virar Venda":
-// na semana, só as negociações que entraram em etapa avançada recentemente (mais urgentes);
-// no mês, o pool completo.
-const FUNIL_JANELA_DIAS=90;
+// Por isso as 5 etapas usam sempre a MESMA janela por estado — só o TAMANHO da janela muda
+// entre semana (30 dias, pulso recente) e mês (90 dias, visão mais ampla) — testado com dado
+// real: 14 dias já zera nas etapas finais, 30 e 90 dias dão formas diferentes e nunca zeram.
+const FUNIL_JANELA={semana:30, mes:90};
 function computeFunil(period){
   const {cur,type}=period;
-  const janelaFrom=new Date(cur.to.getTime()-FUNIL_JANELA_DIAS*864e5);
+  const janelaDias=FUNIL_JANELA[type]||90;
+  const janelaFrom=new Date(cur.to.getTime()-janelaDias*864e5);
   const pipeline=rawRD.filter(r=>{
     if(isLoja(r)) return false;
     const d=parseDate(r['Data de criação']);
@@ -337,7 +337,12 @@ function computeFunil(period){
     return {label:m.label,n};
   });
   const base=steps[0].n||1;
-  steps.forEach(s=>s.pct=Math.round(s.n/base*100));
+  // % de conversão em relação à etapa ANTERIOR (mais informativo que % do topo, que
+  // vira 1%/1%/1% sempre que a queda entre 2 e 3 é grande — esconde onde o funil trava)
+  steps.forEach((s,i)=>{
+    s.pctTotal=Math.round(s.n/base*100);
+    s.pct=i===0?100:(steps[i-1].n?Math.round(s.n/steps[i-1].n*100):0);
+  });
 
   const urgenteFrom=new Date(Date.now()-30*864e5);
   let podeVirar=rawRD.filter(r=>{
@@ -352,7 +357,7 @@ function computeFunil(period){
   if(type==='semana') podeVirar=podeVirar.filter(r=>r.data>=urgenteFrom);
   podeVirar=podeVirar.sort((a,b)=>a.data-b.data).slice(0,8);
 
-  return {steps, podeVirar};
+  return {steps, podeVirar, janelaDias};
 }
 
 // ═══════════════════════════════════════════════════════
@@ -401,27 +406,36 @@ function renderResumo(period){
 // Gradiente do topo (alto volume) ao fundo (etapa vencida) do funil
 const FUNIL_COLORS=['#FFA62C','#E8941A','#C8941A','#B87A1A','#1E7A42'];
 function renderFunil(period){
-  const {steps,podeVirar}=computeFunil(period);
+  const {steps,podeVirar,janelaDias}=computeFunil(period);
   const maxN=steps[0].n||1;
+
+  const funilSub=document.getElementById('f-funil-sub');
+  if(funilSub) funilSub.textContent='pipeline · últimos '+janelaDias+' dias';
+
   const col=document.getElementById('f-funil-col');
   if(col){
     col.innerHTML=steps.map((s,i)=>{
-      const wPct=Math.max(Math.round(s.n/maxN*100),s.n>0?6:3);
+      const wPct=Math.max(Math.round(s.n/maxN*100),s.n>0?4:2);
+      const pctTxt=i===0?'—':s.pct+'%';
       return `<div class="funil-row">
         <div class="funil-count">${s.n}</div>
         <div class="funil-label" style="color:${FUNIL_COLORS[i]}">${s.label}</div>
-        <div class="funil-bar-wrap"><div class="funil-bar" style="width:${wPct}%;background:${FUNIL_COLORS[i]}"></div></div>
-        <div class="funil-pct">${s.pct}%</div>
+        <div class="funil-bar-track"><div class="funil-bar" style="width:${wPct}%;background:${FUNIL_COLORS[i]}"></div></div>
+        <div class="funil-pct">${pctTxt}<span class="funil-pct-lbl">${i===0?'':'da etapa ant.'}</span></div>
       </div>`;
     }).join('');
   }
+
+  const pvSub=document.getElementById('f-pv-sub');
+  if(pvSub) pvSub.textContent=period.type==='semana'?'entraram em etapa avançada nos últimos 30 dias':'todas em etapa avançada';
+
   const body=document.getElementById('f-pv-body');
   if(body){
     if(!podeVirar.length){
       body.innerHTML='<div class="pv-empty">Nenhuma negociação em etapa avançada</div>';
     }else{
       body.innerHTML=podeVirar.map(r=>{
-        const cls=r.dias>14?'style="color:var(--red-status)"':r.dias>7?'style="color:var(--yellow)"':'';
+        const cls=r.dias>14?'style="color:var(--s-red)"':r.dias>7?'style="color:var(--s-yellow)"':'';
         const dd=String(r.data.getDate()).padStart(2,'0'),mm=String(r.data.getMonth()+1).padStart(2,'0');
         return `<div class="pv-row" ${cls}>
           <span class="pv-entrou">${dd}/${mm}</span>

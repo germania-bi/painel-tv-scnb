@@ -122,26 +122,38 @@ html,body{
 
 /* ── FUNIL SCREEN ── */
 .funil-layout{ flex:1; display:grid; grid-template-columns:1.25fr 1fr; gap:24px; min-height:0; }
-.funil-col{ display:flex; flex-direction:column; justify-content:center; gap:18px; }
-.funil-row{ display:flex; align-items:center; gap:18px; }
+.funil-side{ display:flex; flex-direction:column; min-height:0; }
+.funil-title-row{ display:flex; align-items:baseline; gap:14px; margin-bottom:18px; flex-shrink:0; }
+.funil-sub{
+  font-family:'Barlow Condensed',sans-serif; font-size:14px; font-weight:600;
+  letter-spacing:1px; color:var(--txt-faint); text-transform:uppercase;
+  background:rgba(255,166,44,0.08); border:1px solid var(--border2);
+  border-radius:5px; padding:3px 12px;
+}
+.funil-col{ flex:1; display:flex; flex-direction:column; justify-content:center; gap:20px; }
+.funil-row{ display:flex; align-items:center; gap:16px; }
 .funil-count{
   font-family:'Barlow Condensed',sans-serif; font-weight:900; font-size:34px;
   color:var(--txt); width:86px; text-align:right; flex-shrink:0;
 }
 .funil-label{
-  font-family:'Barlow Condensed',sans-serif; font-weight:800; font-size:19px;
-  letter-spacing:1.2px; text-transform:uppercase; width:210px; flex-shrink:0;
+  font-family:'Barlow Condensed',sans-serif; font-weight:800; font-size:18px;
+  letter-spacing:1px; text-transform:uppercase; width:190px; flex-shrink:0;
+  text-align:left;
 }
-.funil-bar-wrap{ flex:1; display:flex; }
+/* Track de largura fixa (não flex:1) — senão barras pequenas deixam um vão enorme
+   até a % lá na outra ponta da tela, parecendo "vazio" */
+.funil-bar-track{ width:clamp(120px,26vw,340px); flex-shrink:0; display:flex; background:rgba(255,255,255,0.04); border-radius:8px; overflow:hidden; }
 .funil-bar{
-  height:34px; border-radius:0 8px 8px 0;
+  height:34px; border-radius:8px;
   box-shadow:var(--shadow-sm); min-width:6px;
   transition:width .5s ease;
 }
 .funil-pct{
   font-family:'Barlow Condensed',sans-serif; font-weight:800; font-size:22px;
-  width:64px; flex-shrink:0; color:var(--txt-mid); text-align:right;
+  color:var(--txt-mid); text-align:left; line-height:1.15;
 }
+.funil-pct-lbl{ display:block; font-size:10px; font-weight:600; letter-spacing:0.5px; color:var(--txt-faint); text-transform:uppercase; }
 
 .panel{
   background:var(--card); border:1px solid var(--border); border-radius:var(--radius);
@@ -149,7 +161,7 @@ html,body{
 }
 .panel-title{
   font-family:'Barlow Condensed',sans-serif; font-size:18px; font-weight:800;
-  letter-spacing:2.5px; text-transform:uppercase; color:var(--gold-lt); margin-bottom:14px; flex-shrink:0;
+  letter-spacing:2.5px; text-transform:uppercase; color:var(--gold-lt); flex-shrink:0;
 }
 .pv-table{ flex:1; overflow:hidden; display:flex; flex-direction:column; }
 .pv-head{
