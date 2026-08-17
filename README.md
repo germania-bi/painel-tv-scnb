@@ -15,7 +15,7 @@ Os dados são recarregados a cada 10 minutos. A página inteira recarrega sozinh
 
 ## Como abrir na TV
 
-Abra a URL publicada no navegador em tela cheia (F11), ou inicie o Chrome direto em modo kiosk:
+Abra a URL publicada no navegador e clique no botão **"Tela Cheia"** no rodapé (ou tecla **F**) — a Fullscreen API exige um clique/gesto do usuário, não dá pra entrar sozinho ao carregar a página. Alternativa: F11 do navegador, ou iniciar o Chrome direto em modo kiosk:
 
 ```
 chrome --kiosk --incognito https://<sua-url>.vercel.app
@@ -25,20 +25,9 @@ chrome --kiosk --incognito https://<sua-url>.vercel.app
 
 Mesmas planilhas publicadas (Google Sheets → Arquivo → Compartilhar → Publicar na Web → CSV) já usadas no Dashboard SCNB — configuradas em `script.js`, objeto `URLS`.
 
-### Aba de Metas (opcional — ainda não configurada)
+### Meta de Vendas
 
-Pra ativar o card "Meta de Faturamento" na Tela 1, publique uma terceira aba do mesmo Google Sheets como CSV e cole o link em `URLS.metas` (script.js). Colunas esperadas:
-
-| Tipo | Periodo | Meta |
-|---|---|---|
-| mes | 2026-08 | 150000 |
-| semana | 2026-08-10 | 40000 |
-
-- `Tipo`: `mes` ou `semana`
-- `Periodo`: `AAAA-MM` pra mês, ou a data da segunda-feira da semana (`AAAA-MM-DD`) pra semana
-- `Meta`: valor numérico da meta de faturamento do período
-
-Sem essa aba configurada, o card mostra "meta não configurada" e o resto do painel funciona normalmente.
+Alvo fixo no código (`script.js`, constante `META_VENDAS_MES`): **20 vendas/mês** (Germânia + Loja somadas), com meta semanal proporcional (`META_VENDAS_SEMANA`, hoje 5). Pra mudar o número, edite essas duas constantes direto no script — não depende de planilha.
 
 ## Achado importante — planilha EZ
 
@@ -51,6 +40,6 @@ Esse painel já contorna o problema no código (`protocoloCorrompido()` em scrip
 Sem build step — HTML + CSS + JS puro, mesmo padrão do Dashboard SCNB / Dashboard Chopp / funil-rd-dashboard.
 
 - `index.html` — estrutura das duas telas
-- `style.css` — design system (paleta clara, tokens em `design-system.md` do funil-rd-dashboard)
+- `style.css` — design system (paleta dark, mesmas variáveis de cor do Dashboard SCNB)
 - `script.js` — fetch de dados, cálculos, motor de rotação
 - `logo.png` — logo Germânia
