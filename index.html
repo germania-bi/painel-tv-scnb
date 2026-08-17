@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1920, initial-scale=1">
+<title>Painel TV · Sua Casa Nosso Bar · Germânia</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;500;600;700;800;900&family=Barlow:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css?v=1">
+</head>
+<body>
+
+<div class="tv-wrap">
+  <header class="header">
+    <div class="header-inner">
+      <div class="h-logo"><img src="logo.png" alt="Germânia"></div>
+      <div class="h-div"></div>
+      <div class="h-brand">
+        <div class="eyebrow">Germânia · Cervejaria · Painel Comercial</div>
+        <h1>Sua Casa Nosso Bar</h1>
+      </div>
+      <div class="h-period">
+        <div class="h-clock" id="h-clock">--:--</div>
+        <div class="h-period-pill" id="h-period-pill">—</div>
+      </div>
+    </div>
+  </header>
+  <div class="accent-bar"></div>
+
+  <div class="stage">
+
+    <!-- TELA 1 — RESUMO -->
+    <section class="tv-screen" id="screen-resumo">
+      <div class="kpi-row">
+        <div class="kpi-card" style="--card-accent:var(--gold)">
+          <div class="kpi-label">Total Leads</div>
+          <div class="kpi-value" id="r-leads">--</div>
+          <div class="kpi-delta" id="r-leads-d"></div>
+        </div>
+        <div class="kpi-card" style="--card-accent:var(--green)">
+          <div class="kpi-label">Vendas Interna</div>
+          <div class="kpi-value" id="r-vendas-germ">--</div>
+          <div class="kpi-delta" id="r-vendas-germ-d"></div>
+        </div>
+        <div class="kpi-card" style="--card-accent:#5B7FA6">
+          <div class="kpi-label">Venda Loja</div>
+          <div class="kpi-value" id="r-vendas-loja">--</div>
+          <div class="kpi-delta" id="r-vendas-loja-d"></div>
+        </div>
+        <div class="kpi-card" style="--card-accent:var(--red)">
+          <div class="kpi-label">Total Faturado</div>
+          <div class="kpi-value" id="r-faturado">--</div>
+          <div class="kpi-delta" id="r-faturado-d"></div>
+        </div>
+      </div>
+      <div class="kpi-row">
+        <div class="kpi-card" style="--card-accent:var(--gold)">
+          <div class="kpi-label">TPI Médio</div>
+          <div class="kpi-value" id="r-tpi">--</div>
+          <div class="kpi-delta" id="r-tpi-d"></div>
+        </div>
+        <div class="kpi-card" style="--card-accent:#5B7FA6">
+          <div class="kpi-label">Em Atendimento</div>
+          <div class="kpi-value" id="r-atend">--</div>
+        </div>
+        <div class="kpi-card" style="--card-accent:var(--green)">
+          <div class="kpi-label">Encerrados</div>
+          <div class="kpi-value" id="r-encerrados">--</div>
+        </div>
+        <div class="kpi-card" style="--card-accent:var(--gray)">
+          <div class="kpi-label">% Finalizados</div>
+          <div class="kpi-value" id="r-pctfinal">--</div>
+        </div>
+      </div>
+      <div class="meta-row">
+        <div class="meta-card">
+          <div>
+            <div class="meta-label">Meta de Faturamento</div>
+            <div class="meta-sub" id="r-meta-sub">carregando...</div>
+          </div>
+          <div class="meta-pct" id="r-meta-pct">--%</div>
+          <div class="meta-track"><div class="meta-fill" id="r-meta-fill" style="width:0%"></div></div>
+        </div>
+        <div class="meta-card2">
+          <div class="kpi-label">Ticket Médio</div>
+          <div class="kpi-value" id="r-ticket" style="font-size:40px">--</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TELA 2 — FUNIL -->
+    <section class="tv-screen" id="screen-funil">
+      <div class="funil-layout">
+        <div class="funil-col" id="f-funil-col"></div>
+        <div class="panel">
+          <div class="panel-title">Pode Virar Venda</div>
+          <div class="pv-table">
+            <div class="pv-head"><span>Entrou</span><span>Nome</span><span>Etapa</span></div>
+            <div id="f-pv-body" style="flex:1;overflow:hidden;display:flex;flex-direction:column;"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="tv-footer">
+    <div><span class="dot" id="status-dot"></span><span id="status-txt">sincronizando...</span></div>
+    <div class="progress-dots" id="progress-dots">
+      <span></span><span></span><span></span><span></span>
+    </div>
+  </div>
+</div>
+
+<script src="script.js?v=1"></script>
+</body>
+</html>
