@@ -203,13 +203,16 @@ html,body{
 /* Cards em vez de tabela — uma tabela larga com 1-2 linhas de dado ficava com colunas
    enormes e vazias. Cards se ajustam ao próprio conteúdo e "quebram linha" (wrap),
    preenchendo melhor independente de quantas negociações existirem. */
-.pv-grid{ display:flex; flex-wrap:wrap; align-content:flex-start; gap:16px; overflow:hidden; }
+/* sem overflow:hidden aqui — cortava a última linha do card quando a altura
+   disponível ficava alguns px curta do necessário */
+.pv-grid{ display:flex; flex-wrap:wrap; align-content:flex-start; gap:16px; }
 .pv-card{
   background:var(--card2); border:1px solid var(--border2); border-left:4px solid var(--gold-lt);
   border-radius:10px; padding:16px 22px; min-width:260px; flex:0 1 300px;
 }
 .pv-card.urg-yellow{ border-left-color:var(--s-yellow); }
 .pv-card.urg-red{ border-left-color:var(--s-red); }
+.pv-card.tipo-venda{ border-left-color:#34D399; background:rgba(52,211,153,0.08); }
 .pv-card-nome{
   font-family:'Barlow Condensed',sans-serif; font-size:24px; font-weight:800; color:var(--txt);
 }
@@ -219,6 +222,7 @@ html,body{
 }
 .pv-card.urg-yellow .pv-card-etapa{ color:var(--s-yellow); }
 .pv-card.urg-red .pv-card-etapa{ color:var(--s-red); }
+.pv-card.tipo-venda .pv-card-etapa{ color:#34D399; }
 .pv-card-meta{
   display:flex; justify-content:space-between; margin-top:12px; padding-top:10px;
   border-top:1px solid var(--border); font-family:'Barlow Condensed',sans-serif;

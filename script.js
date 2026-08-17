@@ -197,7 +197,28 @@ const FUNIL_MARCOS=[
   {label:'Venda',             min:Infinity}, // só Ganho
 ];
 // Etapas tardias — usadas na lista "Pode virar venda"
-const ETAPAS_TARDIAS=new Set(['Assinatura de Contrato','Processamento de Pagamento','Cadastro no Sistema']);
+const ETAPAS_TARDIAS=new Set(['Assinatura de Contrato','Processamento de Pagamento']);
+// O RD CRM não tem um campo de "data de entrada na etapa atual" — a aproximação
+// disponível mais próxima é Data/Hora do último contato (cai pra Data/Hora de
+// criação se nunca houve contato registrado). Não é exatamente "tempo na etapa",
+// é "tempo desde a última interação registrada nessa negociação".
+function parseHoraStr(s){
+  if(!s) return null;
+  const p=s.split(':');
+  if(p.length<2) return null;
+  return {h:+p[0]||0,m:+p[1]||0};
+}
+function parseDataHora(dataStr,horaStr){
+  const d=parseDate(dataStr);
+  if(!d) return null;
+  const hm=parseHoraStr(horaStr);
+  if(hm) d.setHours(hm.h,hm.m,0,0);
+  return d;
+}
+function ultimaAtividade(r){
+  if((r['Data do último contato']||'').trim()) return parseDataHora(r['Data do último contato'],r['Hora do último contato']);
+  return parseDataHora(r['Data de criação'],r['Hora de criação']);
+}
 
 // ═══════════════════════════════════════════════════════
 // PERIODO — semana (seg-dom) e mes corrente, sem picker (kiosk nao interage)
@@ -350,18 +371,31 @@ function computeFunil(period){
     s.pct=i===0?100:(steps[i-1].n?Math.round(s.n/steps[i-1].n*100):0);
   });
 
-  const urgenteFrom=new Date(Date.now()-30*864e5);
-  let podeVirar=rawRD.filter(r=>{
+  const agora=Date.now();
+
+  // Pendentes: negociações Em Andamento nas 2 etapas tardias, ordenadas pela mais
+  // parada primeiro (maior tempo desde a última atividade registrada)
+  const urgenteFrom=new Date(agora-30*864e5);
+  let pendentes=rawRD.filter(r=>{
     if(isLoja(r)) return false;
     if(estadoNorm(r)!=='Em Andamento') return false;
     return ETAPAS_TARDIAS.has((r['Etapa']||'').trim());
   }).map(r=>{
-    const d=parseDate(r['Data de criação']);
-    const dias=d?Math.floor((Date.now()-d)/864e5):null;
-    return {nome:r['Nome']||'—',etapa:r['Etapa'],data:d,dias};
+    const d=ultimaAtividade(r);
+    const horas=d?(agora-d)/3600000:null;
+    return {tipo:'pendente',nome:r['Nome']||'—',etapa:r['Etapa'],data:d,horas};
   }).filter(r=>r.data);
-  if(type==='semana') podeVirar=podeVirar.filter(r=>r.data>=urgenteFrom);
-  podeVirar=podeVirar.sort((a,b)=>a.data-b.data).slice(0,8);
+  if(type==='semana') pendentes=pendentes.filter(r=>r.data>=urgenteFrom);
+  pendentes.sort((a,b)=>a.data-b.data);
+
+  // Vendas: negociações Ganho, aparecem na lista por 48h após o fechamento (celebração)
+  const vendas=rawRD.filter(r=>!isLoja(r)&&estadoNorm(r)==='Ganho').map(r=>{
+    const d=parseDataHora(r['Data de fechamento'],r['Hora de fechamento']);
+    const horas=d?(agora-d)/3600000:null;
+    return {tipo:'venda',nome:r['Nome']||'—',etapa:'Venda',data:d,horas};
+  }).filter(r=>r.data&&r.horas>=0&&r.horas<=48).sort((a,b)=>a.horas-b.horas);
+
+  const podeVirar=[...vendas,...pendentes].slice(0,8);
 
   return {steps, podeVirar, janelaDias};
 }
@@ -435,7 +469,7 @@ function renderFunil(period){
   }
 
   const pvSub=document.getElementById('f-pv-sub');
-  if(pvSub) pvSub.textContent=period.type==='semana'?'entraram em etapa avançada nos últimos 30 dias':'todas em etapa avançada';
+  if(pvSub) pvSub.textContent='assinatura de contrato · processamento de pagamento'+(period.type==='semana'?' · últimos 30 dias':'');
 
   const body=document.getElementById('f-pv-body');
   if(body){
@@ -443,12 +477,20 @@ function renderFunil(period){
       body.innerHTML='<div class="pv-empty">Nenhuma negociação em etapa avançada</div>';
     }else{
       body.innerHTML=podeVirar.map(r=>{
-        const urgCls=r.dias>14?'urg-red':r.dias>7?'urg-yellow':'';
+        if(r.tipo==='venda'){
+          const dd=String(r.data.getDate()).padStart(2,'0'),mm=String(r.data.getMonth()+1).padStart(2,'0');
+          return `<div class="pv-card tipo-venda">
+            <div class="pv-card-nome">🎉 ${r.nome}</div>
+            <div class="pv-card-etapa">Venda confirmada</div>
+            <div class="pv-card-meta"><span>fechou ${dd}/${mm}</span><span class="pv-card-dias">há ${Math.round(r.horas)}h</span></div>
+          </div>`;
+        }
+        const urgCls=r.horas>48?'urg-red':r.horas>24?'urg-yellow':'';
         const dd=String(r.data.getDate()).padStart(2,'0'),mm=String(r.data.getMonth()+1).padStart(2,'0');
         return `<div class="pv-card ${urgCls}">
           <div class="pv-card-nome">${r.nome}</div>
           <div class="pv-card-etapa">${r.etapa}</div>
-          <div class="pv-card-meta"><span>entrou ${dd}/${mm}</span><span class="pv-card-dias">há ${r.dias}d</span></div>
+          <div class="pv-card-meta"><span>últ. atividade ${dd}/${mm}</span><span class="pv-card-dias">há ${Math.round(r.horas)}h</span></div>
         </div>`;
       }).join('');
     }
