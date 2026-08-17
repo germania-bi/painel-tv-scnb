@@ -393,7 +393,6 @@ function renderResumo(period){
   set('r-atend',c.atend);
   set('r-encerrados',c.encerrados);
   set('r-pctfinal',c.pctFinal+'%');
-  set('r-ticket',fmtBRLk(c.ticket));
 
   const d=document.getElementById.bind(document);
   const setDelta=(id,cur,prev,opt)=>{const el=d(id);if(el)el.innerHTML=deltaHTML(cur,prev,opt);};
@@ -417,17 +416,19 @@ function renderResumo(period){
   }
 }
 
-const FUNIL_COLORS=['#C8941A','#C8941A','#966A00','#966A00','#1E7A42'];
+// Gradiente do topo (alto volume) ao fundo (etapa vencida) do funil
+const FUNIL_COLORS=['#FFA62C','#E8941A','#C8941A','#B87A1A','#1E7A42'];
 function renderFunil(period){
   const {steps,podeVirar}=computeFunil(period);
   const maxN=steps[0].n||1;
   const col=document.getElementById('f-funil-col');
   if(col){
     col.innerHTML=steps.map((s,i)=>{
-      const wPct=Math.max(Math.round(s.n/maxN*100),s.n>0?14:6);
+      const wPct=Math.max(Math.round(s.n/maxN*100),s.n>0?6:3);
       return `<div class="funil-row">
         <div class="funil-count">${s.n}</div>
-        <div class="funil-bar-wrap"><div class="funil-bar" style="width:${wPct}%;background:${FUNIL_COLORS[i]}">${s.label}</div></div>
+        <div class="funil-label" style="color:${FUNIL_COLORS[i]}">${s.label}</div>
+        <div class="funil-bar-wrap"><div class="funil-bar" style="width:${wPct}%;background:${FUNIL_COLORS[i]}"></div></div>
         <div class="funil-pct">${s.pct}%</div>
       </div>`;
     }).join('');
