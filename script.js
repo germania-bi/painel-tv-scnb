@@ -5,16 +5,12 @@
 const URLS = {
   rd:    'https://docs.google.com/spreadsheets/d/e/2PACX-1vSmgtuSBRI86Jz3JvRLbPquLflDNM9wHVjlrq-xDtgq7F6pY8jVXZBSyA4PDGbGgg_S77jOH0yw80ue/pub?gid=1929371575&single=true&output=csv',
   ez:    'https://docs.google.com/spreadsheets/d/e/2PACX-1vSmgtuSBRI86Jz3JvRLbPquLflDNM9wHVjlrq-xDtgq7F6pY8jVXZBSyA4PDGbGgg_S77jOH0yw80ue/pub?gid=515237738&single=true&output=csv',
-  // Terceira aba do MESMO Google Sheets, publicada como CSV. Colunas esperadas: Tipo,Periodo,Meta
-  //   Tipo    = "mes" ou "semana"
-  //   Periodo = "2026-08" (mes) ou a data da segunda-feira da semana, "2026-08-10" (semana)
-  //   Meta    = valor numerico da meta de faturamento pro periodo (ex: 150000)
-  // Deixe em branco ate a aba existir — o painel funciona normalmente sem meta configurada.
-  metas: '',
 };
 const REFRESH_MS = 10*60*1000;      // recarrega os dados a cada 10 min
 const STATE_MS = 15*1000;           // cada tela+periodo fica 15s no ar
 const RELOAD_MS = 6*60*60*1000;     // reload completo da pagina a cada 6h (resiliencia de kiosk 24/7)
+const META_VENDAS_MES = 20;         // meta fixa: 20 vendas (Germânia + Loja) por mês
+const META_VENDAS_SEMANA = Math.round(META_VENDAS_MES/4); // proporcional, arredondado
 
 // ═══════════════════════════════════════════════════════
 // PARSE HELPERS — copiados 1:1 do Dashboard SCNB pra bater com os mesmos numeros
@@ -234,15 +230,11 @@ function getPeriod(type){
   return {cur,prev,label:MESES[now.getMonth()].toUpperCase(),dlabel:'vs mês anterior'};
 }
 function fmtYMD(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
-function periodoKeyMetas(type,cur){
-  if(type==='mes') return cur.from.getFullYear()+'-'+String(cur.from.getMonth()+1).padStart(2,'0');
-  return fmtYMD(cur.from); // segunda-feira da semana
-}
 
 // ═══════════════════════════════════════════════════════
 // STATE
 // ═══════════════════════════════════════════════════════
-let rawRD=[], rawEZ=[], rawMETAS=[];
+let rawRD=[], rawEZ=[];
 let lastSyncOk=false;
 
 async function fetchAll(){
@@ -253,14 +245,12 @@ async function fetchAll(){
     return parseCSV(await res.text());
   };
   try{
-    const [rd,ez,metas]=await Promise.all([
+    const [rd,ez]=await Promise.all([
       go(URLS.rd),
       go(URLS.ez),
-      go(URLS.metas).catch(()=>null),
     ]);
     if(rd) rawRD=rd;
     if(ez) rawEZ=ez;
-    if(metas) rawMETAS=metas;
     lastSyncOk=true;
   }catch(e){
     console.warn('fetchAll:',e);
@@ -306,12 +296,10 @@ function computeResumo(period){
   const encerCur=ezCur.filter(r=>r['Status']==='Finalizado').length;
   const pctFinal=ezCur.length?Math.round(encerCur/ezCur.length*100):0;
 
-  let meta=null;
-  if(rawMETAS.length){
-    const key=periodoKeyMetas(period.type,cur);
-    const row=rawMETAS.find(r=>(r['Tipo']||'').trim().toLowerCase()===period.type&&(r['Periodo']||'').trim()===key);
-    if(row){const m=parseBRL(row['Meta']);if(m>0) meta={valor:m,pct:Math.round(fatCur/m*100)};}
-  }
+  // Meta = 20 vendas/mês (Germânia + Loja), fixa — proporcional pra semana
+  const vendasTotalCur=vGermCur+vLojaCur;
+  const metaAlvo=period.type==='mes'?META_VENDAS_MES:META_VENDAS_SEMANA;
+  const meta={alvo:metaAlvo,atual:vendasTotalCur,pct:Math.round(vendasTotalCur/metaAlvo*100)};
 
   return{
     leads:leadsCur.length, leadsPrev:leadsPrev.length,
@@ -405,15 +393,9 @@ function renderResumo(period){
   const metaSub=document.getElementById('r-meta-sub');
   const metaPct=document.getElementById('r-meta-pct');
   const metaFill=document.getElementById('r-meta-fill');
-  if(c.meta){
-    if(metaSub) metaSub.textContent=fmtBRL(c.fat)+' de '+fmtBRL(c.meta.valor);
-    if(metaPct) metaPct.textContent=c.meta.pct+'%';
-    if(metaFill) metaFill.style.width=Math.min(c.meta.pct,100)+'%';
-  }else{
-    if(metaSub) metaSub.textContent='meta não configurada para este período';
-    if(metaPct) metaPct.textContent='--';
-    if(metaFill) metaFill.style.width='0%';
-  }
+  if(metaSub) metaSub.textContent=c.meta.atual+' de '+c.meta.alvo+' vendas';
+  if(metaPct) metaPct.textContent=c.meta.pct+'%';
+  if(metaFill) metaFill.style.width=Math.min(c.meta.pct,100)+'%';
 }
 
 // Gradiente do topo (alto volume) ao fundo (etapa vencida) do funil
@@ -491,6 +473,22 @@ function tickClock(){
   const n=new Date();
   el.textContent=String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0');
 }
+
+// ═══════════════════════════════════════════════════════
+// TELA CHEIA — botão no rodapé + tecla F (Fullscreen API exige gesto do usuário,
+// por isso não dá pra entrar sozinho ao carregar a página)
+// ═══════════════════════════════════════════════════════
+function toggleFullscreen(){
+  if(!document.fullscreenElement) document.documentElement.requestFullscreen?.().catch(()=>{});
+  else document.exitFullscreen?.();
+}
+document.addEventListener('keydown',e=>{
+  if(e.key==='f'||e.key==='F') toggleFullscreen();
+});
+document.addEventListener('fullscreenchange',()=>{
+  const btn=document.getElementById('fs-btn');
+  if(btn) btn.textContent=document.fullscreenElement?'⛶ Sair da Tela Cheia':'⛶ Tela Cheia';
+});
 
 // ═══════════════════════════════════════════════════════
 // INIT

@@ -180,3 +180,10 @@ html,body{
 .progress-dots{ display:flex; gap:8px; }
 .progress-dots span{ width:32px; height:4px; border-radius:2px; background:rgba(255,200,120,0.14); transition:background .3s; }
 .progress-dots span.active{ background:var(--gold-lt); }
+.fs-btn{
+  background:transparent; border:1px solid var(--border2); color:var(--txt-faint);
+  font-family:'Barlow Condensed',sans-serif; font-size:12px; font-weight:700;
+  letter-spacing:1.5px; text-transform:uppercase; border-radius:5px;
+  padding:5px 12px; cursor:pointer; transition:all .15s;
+}
+.fs-btn:hover{ border-color:var(--gold); color:var(--gold-lt); }
