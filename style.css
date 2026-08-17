@@ -191,26 +191,32 @@ html,body{
   background:rgba(255,166,44,0.08); border:1px solid var(--border2);
   border-radius:5px; padding:3px 12px;
 }
-.funil-col{ flex:1; display:flex; flex-direction:column; justify-content:center; gap:12px; min-height:0; }
-.funil-row{ display:flex; align-items:center; gap:20px; }
+/* Cada linha é flex:1 dentro do funil-col — as 5 linhas sempre preenchem 100%
+   da altura disponível, dividida em partes iguais, sem sobrar margem em cima/
+   embaixo (nem estourar) não importa o tamanho da tela. */
+.funil-col{ flex:1; display:flex; flex-direction:column; gap:10px; min-height:0; }
+.funil-row{ flex:1; display:flex; align-items:stretch; gap:20px; min-height:0; }
 .funil-count{
   font-family:'Barlow Condensed',sans-serif; font-weight:900; font-size:30px;
   color:var(--txt); width:66px; text-align:left; flex-shrink:0;
+  display:flex; align-items:center;
 }
 .funil-label{
   font-family:'Barlow Condensed',sans-serif; font-weight:800; font-size:17px;
   letter-spacing:1px; text-transform:uppercase; width:200px; flex-shrink:0;
-  text-align:left;
+  text-align:left; display:flex; align-items:center;
 }
 /* Barra sempre cheia (não proporcional) — a contagem e a % de conversão já dizem a
    magnitude; uma barra proporcional ao topo do funil deixava as etapas finais
-   praticamente invisíveis dentro de um container vazio enorme. Largura fixa alinhada
-   ao mesmo padrão de margem da linha de cards da Tela 1. */
-.funil-bar-track{ width:clamp(280px,56vw,1050px); flex-shrink:0; display:flex; }
-.funil-bar{ width:100%; height:32px; border-radius:6px; box-shadow:var(--shadow-sm); }
+   praticamente invisíveis dentro de um container vazio enorme. flex:1 (não mais
+   um max-width fixo) — preenche todo o espaço horizontal que sobrar, não importa
+   a largura da tela. */
+.funil-bar-track{ flex:1; min-width:0; display:flex; }
+.funil-bar{ width:100%; border-radius:6px; box-shadow:var(--shadow-sm); }
 .funil-pct{
   font-family:'Barlow Condensed',sans-serif; font-weight:800; font-size:20px;
   color:var(--txt-mid); text-align:left; line-height:1.15;
+  display:flex; flex-direction:column; justify-content:center; width:90px; flex-shrink:0;
 }
 .funil-pct-lbl{ display:block; font-size:10px; font-weight:600; letter-spacing:0.5px; color:var(--txt-faint); text-transform:uppercase; }
 
