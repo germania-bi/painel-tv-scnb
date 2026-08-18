@@ -199,6 +199,17 @@ function ultimaAtividade(r){
   if(r.lastActivityAt) return new Date(r.lastActivityAt);
   return dCriacao(r);
 }
+// Vendas (Ganho, Germânia) fechadas nas últimas `windowHoras` — usado tanto no
+// "Pode Virar Venda" (48h) quanto na detecção de venda nova pra disparar a
+// celebração (confete).
+function getVendasRecentes(windowHoras){
+  const agora=Date.now();
+  return rawRD.filter(r=>!isLoja(r)&&estadoNorm(r)==='Ganho').map(r=>{
+    const d=dFechamento(r);
+    const horas=d?(agora-d)/3600000:null;
+    return {id:r.id,nome:r.nome||'—',valorUnico:valorUnico(r),modelo:r.modelo||'',data:d,horas};
+  }).filter(r=>r.data&&r.horas>=0&&r.horas<=windowHoras).sort((a,b)=>a.horas-b.horas);
+}
 
 // ═══════════════════════════════════════════════════════
 // PERIODO — semana (seg-dom) e mes corrente, sem picker (kiosk nao interage)
@@ -261,11 +272,92 @@ async function fetchAll(){
     rawRD=rd;
     rawEZ=ez;
     lastSyncOk=true;
+    checkNovasVendas();
   }catch(e){
     console.warn('fetchAll:',e);
     lastSyncOk=false;
   }
   setStatus();
+}
+
+// ═══════════════════════════════════════════════════════
+// CELEBRAÇÃO DE VENDA — confete + card quando uma venda nova aparece
+// ═══════════════════════════════════════════════════════
+const CELEBRADAS_KEY='painelTvScnbCelebradas';
+function getCelebradas(){
+  try{ return new Set(JSON.parse(localStorage.getItem(CELEBRADAS_KEY)||'[]')); }
+  catch(e){ return new Set(); }
+}
+function saveCelebradas(set){
+  // limita o tamanho salvo — não precisa lembrar pra sempre, só o suficiente
+  // pra não repetir confete de vendas ainda dentro da janela de 48h
+  const arr=[...set].slice(-300);
+  try{ localStorage.setItem(CELEBRADAS_KEY, JSON.stringify(arr)); }catch(e){}
+}
+let _celebraFila=[];
+let _celebrando=false;
+
+// Num navegador novo (localStorage vazio — primeiro carregamento na TV), marca as
+// vendas já existentes como "vistas" sem comemorar — senão toda vez que a página
+// carrega do zero (troca de TV, F5 manual) o histórico das últimas 48h explode em
+// confete de uma vez só. Só comemora vendas descobertas DEPOIS desse primeiro sync.
+let _primeiraSincronizacao=true;
+function checkNovasVendas(){
+  const celebradas=getCelebradas();
+  const recentes=getVendasRecentes(48);
+  if(_primeiraSincronizacao){
+    recentes.forEach(v=>{ if(v.id) celebradas.add(v.id); });
+    saveCelebradas(celebradas);
+    _primeiraSincronizacao=false;
+    return;
+  }
+  const novas=recentes.filter(v=>v.id&&!celebradas.has(v.id));
+  if(!novas.length) return;
+  novas.forEach(v=>celebradas.add(v.id));
+  saveCelebradas(celebradas);
+  // mais recente primeiro na fila
+  _celebraFila.push(...novas.sort((a,b)=>a.horas-b.horas));
+  processarFilaCelebracao();
+}
+
+function criarConfete(container){
+  container.innerHTML='';
+  const cores=['#FFA62C','#C8941A','#34D399','#5B7FA6','#e05c5c','#F1E3CE'];
+  const n=70;
+  for(let i=0;i<n;i++){
+    const p=document.createElement('div');
+    p.className='confete-peca';
+    p.style.left=Math.round(Math.random()*100)+'%';
+    p.style.background=cores[Math.floor(Math.random()*cores.length)];
+    p.style.animationDuration=(2.4+Math.random()*2.2)+'s';
+    p.style.animationDelay=(Math.random()*0.6)+'s';
+    p.style.borderRadius=Math.random()>0.5?'50%':'2px';
+    container.appendChild(p);
+  }
+}
+
+function processarFilaCelebracao(){
+  if(_celebrando||!_celebraFila.length) return;
+  _celebrando=true;
+  const v=_celebraFila.shift();
+  const overlay=document.getElementById('celebra-overlay');
+  const confeteEl=document.getElementById('celebra-confete');
+  const nomeEl=document.getElementById('celebra-nome');
+  const valorEl=document.getElementById('celebra-valor');
+  const modeloEl=document.getElementById('celebra-modelo');
+  if(!overlay) { _celebrando=false; return; }
+  if(nomeEl) nomeEl.textContent=v.nome;
+  if(valorEl) valorEl.textContent=fmtBRL(v.valorUnico);
+  if(modeloEl) modeloEl.textContent=v.modelo||'';
+  if(confeteEl) criarConfete(confeteEl);
+  overlay.classList.add('ativo');
+  setTimeout(()=>{
+    overlay.classList.remove('ativo');
+    setTimeout(()=>{
+      _celebrando=false;
+      processarFilaCelebracao(); // próxima da fila, se tiver
+    }, 600); // espera a transição de opacidade terminar antes da próxima
+  }, 7000);
 }
 function setStatus(){
   const dot=document.getElementById('status-dot');
@@ -373,11 +465,7 @@ function computeFunil(period){
   pendentes.sort((a,b)=>a.data-b.data);
 
   // Vendas: negociações Ganho, aparecem na lista por 48h após o fechamento (celebração)
-  const vendas=rawRD.filter(r=>!isLoja(r)&&estadoNorm(r)==='Ganho').map(r=>{
-    const d=dFechamento(r);
-    const horas=d?(agora-d)/3600000:null;
-    return {tipo:'venda',nome:r.nome||'—',etapa:'Venda',data:d,horas};
-  }).filter(r=>r.data&&r.horas>=0&&r.horas<=48).sort((a,b)=>a.horas-b.horas);
+  const vendas=getVendasRecentes(48).map(v=>({tipo:'venda',nome:v.nome,etapa:'Venda',data:v.data,horas:v.horas}));
 
   const podeVirar=[...vendas,...pendentes].slice(0,8);
 

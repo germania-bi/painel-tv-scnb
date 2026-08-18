@@ -37,6 +37,57 @@ html,body{
   text-decoration:underline; margin-top:20px;
 }
 
+/* ── CELEBRAÇÃO DE VENDA — sobrepõe a tela toda, fundo desfocado, confete caindo ──
+   backdrop-filter é progressive enhancement: sem suporte no navegador, o overlay
+   escuro semi-opaco sozinho já funciona bem (sem blur, mas não quebra nada). */
+.celebra-overlay{
+  position:fixed; inset:0; z-index:900;
+  background:rgba(10,7,4,0.55);
+  -webkit-backdrop-filter:blur(6px); backdrop-filter:blur(6px);
+  display:flex; align-items:center; justify-content:center;
+  opacity:0; pointer-events:none; transition:opacity .5s ease;
+  overflow:hidden;
+}
+.celebra-overlay.ativo{ opacity:1; }
+.celebra-confete{ position:absolute; inset:0; overflow:hidden; }
+.confete-peca{
+  position:absolute; top:-24px; width:12px; height:18px; opacity:.95;
+  animation:confeteCai linear forwards;
+}
+@keyframes confeteCai{
+  0%{ transform:translateY(0) rotate(0deg); }
+  100%{ transform:translateY(110vh) rotate(720deg); }
+}
+.celebra-card{
+  position:relative; z-index:1;
+  background:var(--card); border:2px solid var(--gold-lt); border-radius:20px;
+  box-shadow:0 20px 60px rgba(0,0,0,0.5), 0 0 80px rgba(255,166,44,0.25);
+  padding:48px 72px; text-align:center;
+  animation:celebraPop .6s cubic-bezier(.34,1.56,.64,1);
+}
+@keyframes celebraPop{
+  0%{ transform:scale(.6); opacity:0; }
+  60%{ transform:scale(1.06); opacity:1; }
+  100%{ transform:scale(1); opacity:1; }
+}
+.celebra-emoji{ font-size:64px; line-height:1; margin-bottom:12px; }
+.celebra-titulo{
+  font-family:'Barlow Condensed',sans-serif; font-size:28px; font-weight:800;
+  letter-spacing:3px; color:#34D399; text-transform:uppercase; margin-bottom:18px;
+}
+.celebra-nome{
+  font-family:'Barlow Condensed',sans-serif; font-size:44px; font-weight:900;
+  color:var(--txt); line-height:1.1;
+}
+.celebra-valor{
+  font-family:'Barlow Condensed',sans-serif; font-size:72px; font-weight:900;
+  color:var(--gold-lt); line-height:1.1; margin-top:8px;
+}
+.celebra-modelo{
+  font-family:'Barlow Condensed',sans-serif; font-size:18px; font-weight:600;
+  letter-spacing:1px; color:var(--txt-faint); text-transform:uppercase; margin-top:14px;
+}
+
 /* dvh acompanha a altura REAL disponível (descontando barra de endereço/abas do
    navegador) — em vh puro, se o navegador não reserva esse espaço no cálculo,
    o rodapé/última linha do conteúdo pode ficar cortado fora da tela visível. */
