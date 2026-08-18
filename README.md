@@ -11,7 +11,7 @@ Roda em loop contínuo de 60s, alternando 4 estados de 15s cada:
 3. **Funil** — filtro semana
 4. **Funil** — filtro mês
 
-Os dados são recarregados a cada 10 minutos. A página inteira recarrega sozinha a cada 6h (resiliência de tela ligada 24/7).
+Os dados são recarregados a cada 10 minutos, sem navegar/recarregar a página inteira (recarregar a página derrubaria o modo tela cheia, que exige um novo clique do usuário pra reativar — ruim numa TV desassistida).
 
 ## Como abrir na TV
 
@@ -23,7 +23,8 @@ chrome --kiosk --incognito https://<sua-url>.vercel.app
 
 ## Fontes de dados
 
-Mesmas planilhas publicadas (Google Sheets → Arquivo → Compartilhar → Publicar na Web → CSV) já usadas no Dashboard SCNB — configuradas em `script.js`, objeto `URLS`.
+- **RD CRM (negociações)** — direto da API do RD Station CRM, via proxy serverless em `api/rd.js`. Filtra pelo funil "\*Vendas SCNB" (`deal_pipeline_id` fixo no arquivo) e por uma janela de 150 dias (folga acima dos 90 dias usados no Funil). O token fica só na variável de ambiente `RD_TOKEN` no Vercel (Project Settings → Environment Variables) — nunca no código, nunca no navegador. Pra trocar o token: `vercel env rm RD_TOKEN production` e `vercel env add RD_TOKEN production`.
+- **EZ (atendimento WhatsApp)** — continua vindo do Google Sheets publicado (mesma planilha do Dashboard SCNB), sem API disponível por enquanto. URL em `script.js`, objeto `URLS.ez`.
 
 ### Meta de Vendas
 

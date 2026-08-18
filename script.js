@@ -1,9 +1,11 @@
 // ═══════════════════════════════════════════════════════
 // CONFIG
 // ═══════════════════════════════════════════════════════
-// Mesmas fontes de dados do Dashboard SCNB (docs.google.com/.../pub?output=csv)
+// RD CRM vem direto da API (via proxy serverless em /api/rd, token fica só no
+// servidor). EZ (atendimento) continua vindo do Google Sheets publicado — mesma
+// fonte do Dashboard SCNB, sem API disponível por enquanto.
 const URLS = {
-  rd:    'https://docs.google.com/spreadsheets/d/e/2PACX-1vSmgtuSBRI86Jz3JvRLbPquLflDNM9wHVjlrq-xDtgq7F6pY8jVXZBSyA4PDGbGgg_S77jOH0yw80ue/pub?gid=1929371575&single=true&output=csv',
+  rd:    '/api/rd',
   ez:    'https://docs.google.com/spreadsheets/d/e/2PACX-1vSmgtuSBRI86Jz3JvRLbPquLflDNM9wHVjlrq-xDtgq7F6pY8jVXZBSyA4PDGbGgg_S77jOH0yw80ue/pub?gid=515237738&single=true&output=csv',
 };
 const REFRESH_MS = 10*60*1000;      // recarrega os dados a cada 10 min
@@ -98,31 +100,17 @@ function fmtBRLk(v){
   return fmtBRL(v);
 }
 
-function estadoNorm(r){
-  const e=(r['Estado']||'').trim().toLowerCase();
-  if(['ganho','vendida','vendido','fechado','won','venda realizada','concluido','concluído'].includes(e)) return 'Ganho';
-  if(['perdido','perdida','lost','cancelado','desqualificado','sem interesse'].includes(e)) return 'Perdido';
-  return 'Em Andamento';
-}
-function isLoja(r){return !!(r['Vendedor Responsável']&&r['Vendedor Responsável'].trim());}
-function parseProduto(s){
-  if(!s) return {modelo:'',voltagem:''};
-  const low=s.toLowerCase();
-  return {
-    modelo:low.includes('mini')?'Mini':low.includes('master')?'Master':'',
-    voltagem:low.includes('110')?'110v':low.includes('220')?'220v':''
-  };
-}
-// Preço tabelado por modelo — mesma heurística do Dashboard SCNB pra inferir
-// quantidade de unidades em negociações com mais de uma chopeira
-const TICKET_UNITARIO={Master:8919,Mini:6999};
-function unidades(r){
-  const modelo=parseProduto(r['Modelo de Chopeira']||r['Produtos']).modelo;
-  const preco=TICKET_UNITARIO[modelo];
-  if(!preco) return 1;
-  const qtd=Math.round(parseBRL(r['Valor Único'])/preco);
-  return qtd>=1?qtd:1;
-}
+// Deals vêm da API do RD CRM (via /api/rd) já num formato limpo — ver api/rd.js.
+// win: true=Ganho, false=Perdido, null=Em Andamento.
+function estadoNorm(r){ return r.win===true?'Ganho':r.win===false?'Perdido':'Em Andamento'; }
+function isLoja(r){ return !!(r.vendedorResponsavel&&r.vendedorResponsavel.trim()); }
+function dCriacao(r){ return r.createdAt?new Date(r.createdAt):null; }
+function dFechamento(r){ return r.closedAt?new Date(r.closedAt):null; }
+function valorUnico(r){ return r.valorUnico||0; }
+// Unidades agora vem direto do RD (soma de deal_products[].amount) — antes era uma
+// estimativa por preço tabelado (Valor Único ÷ preço do modelo); a API já traz a
+// quantidade real, então essa conta não é mais necessária.
+function unidades(r){ return r.unidades||1; }
 function sumUnidades(arr){return arr.reduce((s,r)=>s+unidades(r),0);}
 function calcTPI(r){
   const pia=r['Primeira Interação do Agente'];
@@ -192,8 +180,7 @@ const ETAPAS_ORDER=[
   'Acompanhamento / Relacionamento',
 ];
 function stageIdx(r){
-  const i=ETAPAS_ORDER.indexOf((r['Etapa']||'').trim());
-  return i;
+  return ETAPAS_ORDER.indexOf((r.etapa||'').trim());
 }
 const FUNIL_MARCOS=[
   {label:'Lead',              min:-1},
@@ -205,25 +192,12 @@ const FUNIL_MARCOS=[
 // Etapas tardias — usadas na lista "Pode virar venda"
 const ETAPAS_TARDIAS=new Set(['Assinatura de Contrato','Processamento de Pagamento']);
 // O RD CRM não tem um campo de "data de entrada na etapa atual" — a aproximação
-// disponível mais próxima é Data/Hora do último contato (cai pra Data/Hora de
-// criação se nunca houve contato registrado). Não é exatamente "tempo na etapa",
-// é "tempo desde a última interação registrada nessa negociação".
-function parseHoraStr(s){
-  if(!s) return null;
-  const p=s.split(':');
-  if(p.length<2) return null;
-  return {h:+p[0]||0,m:+p[1]||0};
-}
-function parseDataHora(dataStr,horaStr){
-  const d=parseDate(dataStr);
-  if(!d) return null;
-  const hm=parseHoraStr(horaStr);
-  if(hm) d.setHours(hm.h,hm.m,0,0);
-  return d;
-}
+// disponível é last_activity_at (nativo da API, cai pra createdAt se nunca teve
+// atividade registrada). Não é exatamente "tempo na etapa", é "tempo desde a
+// última atividade registrada nessa negociação".
 function ultimaAtividade(r){
-  if((r['Data do último contato']||'').trim()) return parseDataHora(r['Data do último contato'],r['Hora do último contato']);
-  return parseDataHora(r['Data de criação'],r['Hora de criação']);
+  if(r.lastActivityAt) return new Date(r.lastActivityAt);
+  return dCriacao(r);
 }
 
 // ═══════════════════════════════════════════════════════
@@ -270,20 +244,22 @@ function fmtYMD(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,
 let rawRD=[], rawEZ=[];
 let lastSyncOk=false;
 
+async function fetchRD(){
+  const res=await fetch(URLS.rd,{cache:'no-store'});
+  if(!res.ok) throw new Error('HTTP '+res.status);
+  const data=await res.json();
+  return data.deals||[];
+}
+async function fetchEZ(){
+  const res=await fetch(URLS.ez,{cache:'no-store'});
+  if(!res.ok) throw new Error('HTTP '+res.status);
+  return parseCSV(await res.text());
+}
 async function fetchAll(){
-  const go=async(url)=>{
-    if(!url) return null;
-    const res=await fetch(url,{cache:'no-store'});
-    if(!res.ok) throw new Error('HTTP '+res.status);
-    return parseCSV(await res.text());
-  };
   try{
-    const [rd,ez]=await Promise.all([
-      go(URLS.rd),
-      go(URLS.ez),
-    ]);
-    if(rd) rawRD=rd;
-    if(ez) rawEZ=ez;
+    const [rd,ez]=await Promise.all([fetchRD(),fetchEZ()]);
+    rawRD=rd;
+    rawEZ=ez;
     lastSyncOk=true;
   }catch(e){
     console.warn('fetchAll:',e);
@@ -306,20 +282,19 @@ function setStatus(){
 // ═══════════════════════════════════════════════════════
 function computeResumo(period){
   const {cur,prev}=period;
-  const leadsCur=rawRD.filter(r=>{const d=parseDate(r['Data de criação']);return d&&d>=cur.from&&d<=cur.to;});
-  const leadsPrev=rawRD.filter(r=>{const d=parseDate(r['Data de criação']);return d&&d>=prev.from&&d<=prev.to;});
-  const ganho=(rows)=>rows.filter(r=>estadoNorm(r)==='Ganho');
+  const leadsCur=rawRD.filter(r=>{const d=dCriacao(r);return d&&d>=cur.from&&d<=cur.to;});
+  const leadsPrev=rawRD.filter(r=>{const d=dCriacao(r);return d&&d>=prev.from&&d<=prev.to;});
   const ganhoInRange=(range)=>rawRD.filter(r=>{
     if(estadoNorm(r)!=='Ganho') return false;
-    const d=parseDate(r['Data de fechamento'])||parseDate(r['Data de criação']);
+    const d=dFechamento(r)||dCriacao(r);
     return d&&d>=range.from&&d<=range.to;
   });
   const gCur=ganhoInRange(cur), gPrev=ganhoInRange(prev);
   const vGermCur=sumUnidades(gCur.filter(r=>!isLoja(r))), vGermPrev=sumUnidades(gPrev.filter(r=>!isLoja(r)));
   const vLojaCur=sumUnidades(gCur.filter(r=>isLoja(r))), vLojaPrev=sumUnidades(gPrev.filter(r=>isLoja(r)));
-  const fatCur=gCur.reduce((s,r)=>s+parseBRL(r['Valor Único']),0);
-  const fatPrev=gPrev.reduce((s,r)=>s+parseBRL(r['Valor Único']),0);
-  const fatGermCur=gCur.filter(r=>!isLoja(r)).reduce((s,r)=>s+parseBRL(r['Valor Único']),0);
+  const fatCur=gCur.reduce((s,r)=>s+valorUnico(r),0);
+  const fatPrev=gPrev.reduce((s,r)=>s+valorUnico(r),0);
+  const fatGermCur=gCur.filter(r=>!isLoja(r)).reduce((s,r)=>s+valorUnico(r),0);
   const ticket=vGermCur?fatGermCur/vGermCur:0;
 
   const ezCur=ezInRange(cur.from,cur.to), ezPrev=ezInRange(prev.from,prev.to);
@@ -362,7 +337,7 @@ function computeFunil(period){
   const pipeline=rawRD.filter(r=>{
     if(isLoja(r)) return false;
     if(estadoNorm(r)==='Perdido') return false;
-    const d=parseDate(r['Data de criação']);
+    const d=dCriacao(r);
     return d&&d>=janelaFrom&&d<=cur.to;
   });
   const steps=FUNIL_MARCOS.map(m=>{
@@ -388,20 +363,20 @@ function computeFunil(period){
   let pendentes=rawRD.filter(r=>{
     if(isLoja(r)) return false;
     if(estadoNorm(r)!=='Em Andamento') return false;
-    return ETAPAS_TARDIAS.has((r['Etapa']||'').trim());
+    return ETAPAS_TARDIAS.has((r.etapa||'').trim());
   }).map(r=>{
     const d=ultimaAtividade(r);
     const horas=d?(agora-d)/3600000:null;
-    return {tipo:'pendente',nome:r['Nome']||'—',etapa:r['Etapa'],data:d,horas};
+    return {tipo:'pendente',nome:r.nome||'—',etapa:r.etapa,data:d,horas};
   }).filter(r=>r.data);
   if(type==='semana') pendentes=pendentes.filter(r=>r.data>=urgenteFrom);
   pendentes.sort((a,b)=>a.data-b.data);
 
   // Vendas: negociações Ganho, aparecem na lista por 48h após o fechamento (celebração)
   const vendas=rawRD.filter(r=>!isLoja(r)&&estadoNorm(r)==='Ganho').map(r=>{
-    const d=parseDataHora(r['Data de fechamento'],r['Hora de fechamento']);
+    const d=dFechamento(r);
     const horas=d?(agora-d)/3600000:null;
-    return {tipo:'venda',nome:r['Nome']||'—',etapa:'Venda',data:d,horas};
+    return {tipo:'venda',nome:r.nome||'—',etapa:'Venda',data:d,horas};
   }).filter(r=>r.data&&r.horas>=0&&r.horas<=48).sort((a,b)=>a.horas-b.horas);
 
   const podeVirar=[...vendas,...pendentes].slice(0,8);
