@@ -141,21 +141,27 @@ function avgTPI(vals){
 
 function isScnbEZ(r){ return (r['Nome do Agente']||'').toLowerCase().includes('mirian'); }
 // A coluna "Protocolo" da planilha EZ virou notação científica em algum momento (ex: "2,61E+11"),
-// fazendo centenas de protocolos DIFERENTES virarem essa mesma string truncada — sem esse fallback
-// o dedup abaixo colapsaria todos eles num único registro. Enquanto a coluna não for reformatada
-// como texto na origem, linhas com protocolo "corrompido" não são deduplicadas entre si.
+// fazendo centenas de protocolos DIFERENTES virarem essa mesma string truncada. A primeira versão
+// deste fallback tratava cada linha corrompida como única — só que o export tem MÚLTIPLAS linhas
+// por conversa (snapshot a cada atualização: um contato chegou a ter 22 linhas no mesmo dia), então
+// isso inflava MUITO as contagens (ex: Encerrados > Total de Leads no mesmo período). Fallback
+// melhor: Contato/Telefone + dia — agrupa snapshots da mesma conversa no mesmo dia, mas ainda
+// separa contatos diferentes e o mesmo contato voltando em outro dia. Enquanto a coluna Protocolo
+// não for reformatada como texto na origem, essa é a aproximação disponível.
 function protocoloCorrompido(p){ return /^[\d.,]+E[+-]?\d+$/i.test((p||'').trim()); }
 function dedupEZ(arr){
   const map={};
-  let uid=0;
   arr.forEach(r=>{
     const tipo=(r['Tipo']||'').toLowerCase().trim();
     if(tipo==='bot'||tipo==='automatizado'||tipo==='robot') return;
     let proto=(r['Protocolo']||'').toString().trim();
     if(!proto) return;
-    if(protocoloCorrompido(proto)) proto='__uid_'+(uid++);
-    const ia=parseInt(r['Contagem de Interações do Agente']||'0')||0;
     const dt=parseDate(r['Criado em']);
+    if(protocoloCorrompido(proto)){
+      const contato=(r['Contato']||r['Telefone']||'').trim().toLowerCase();
+      proto='__c_'+contato+'|'+(dt?dt.toDateString():'');
+    }
+    const ia=parseInt(r['Contagem de Interações do Agente']||'0')||0;
     if(!map[proto]){map[proto]={...r,_ia:ia,_dt:dt};}
     else{
       const prev=map[proto];
@@ -351,8 +357,11 @@ function computeFunil(period){
   const {cur,type}=period;
   const janelaDias=FUNIL_JANELA[type]||90;
   const janelaFrom=new Date(cur.to.getTime()-janelaDias*864e5);
+  // Perdido não conta em nenhuma etapa do funil (nem "Lead") — é um funil de
+  // pipeline vivo, não histórico de tudo que já passou por ali algum dia.
   const pipeline=rawRD.filter(r=>{
     if(isLoja(r)) return false;
+    if(estadoNorm(r)==='Perdido') return false;
     const d=parseDate(r['Data de criação']);
     return d&&d>=janelaFrom&&d<=cur.to;
   });
