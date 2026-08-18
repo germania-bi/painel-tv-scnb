@@ -652,6 +652,12 @@ function dismissFsOverlay(ev){
 }
 document.addEventListener('keydown',e=>{
   if(e.key==='f'||e.key==='F') toggleFullscreen();
+  // Tecla C: dispara a celebração com dado fake, sem tocar em nada do RD —
+  // pra testar/ajustar o efeito visual sem risco de sujar os números reais.
+  if(e.key==='c'||e.key==='C'){
+    _celebraFila.push({nome:'Teste Confete',valorUnico:8919,modelo:'Master 110v'});
+    processarFilaCelebracao();
+  }
 });
 document.addEventListener('fullscreenchange',()=>{
   const btn=document.getElementById('fs-btn');
